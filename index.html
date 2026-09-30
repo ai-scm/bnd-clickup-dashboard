@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estado del proyecto</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="logo-pair" id="logoPair"></div>
+    <div>
+      <h1 id="title">Estado del proyecto</h1>
+      <p id="subtitle"></p>
+    </div>
+  </div>
+  <div class="sync-panel">
+    <div class="sync-row">
+      <select class="project-select" id="projectSelect" title="Cambiar de proyecto"></select>
+      <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncText">Sin sincronizar</span></div>
+    </div>
+    <div class="sync-row">
+      <button class="btn" id="refreshBtn">Actualizar ahora</button>
+      <button class="btn btn-dark" id="exportPdfBtn">📄 Exportar a PDF</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner demo" id="banner-demo"></div>
+  <div class="banner config" id="banner-config"></div>
+  <div class="banner loading" id="banner-loading"></div>
+  <div class="banner error" id="banner-error"></div>
+
+  <div class="tabs-row">
+    <nav class="tabs" id="tabs"></nav>
+    <div class="status-legend">
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--accent)"></span>En curso</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--primary)"></span>Finalizada</span>
+      <span class="legend-chip"><span class="legend-dot outline"></span>Pendiente</span>
+      <span class="legend-chip"><span class="legend-dot" style="background:var(--danger)"></span>Bloqueada</span>
+    </div>
+  </div>
+
+  <div id="view"></div>
+</main>
+
+<!-- Configuración (lo único que se edita) y token (no versionado). -->
+<script src="config/proyectos.js"></script>
+<script src="config/secretos.js"></script>
+<!-- Código -->
+<script src="js/model.js"></script>
+<script src="js/demo-data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

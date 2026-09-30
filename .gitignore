@@ -1,0 +1,5 @@
+# Token de ClickUp: nunca versionar
+config/secretos.js
+
+# HTML generado por build.py (embebe el token)
+dist/
