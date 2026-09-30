@@ -1,112 +1,120 @@
-# Dashboard de estado de proyecto (ClickUp)
+# ClickUp Dashboard
 
-Evolución del dashboard de Metro de Medellín (`plantilla/`). Ahora es **un solo motor configurable** que sirve para cualquier proyecto:
+Dashboard de estado de proyecto construido sobre la API de ClickUp. Es un motor **configurable y sin backend**: el navegador consulta ClickUp y arma la vista a partir de un único archivo de configuración, así que se puede reutilizar en cualquier equipo sin tocar el código.
 
-- **Coljuegos**: *Categoría → Historias de usuario → Etapas*.
-- **Metro de Medellín**: *Fase → Requerimientos → Etapas + Hitos*.
+- Sin servidor ni base de datos: HTML + CSS + JavaScript plano.
+- Varios proyectos en el mismo código, con selector o parámetro en la URL.
+- Estructura de trabajo configurable: agrupación (categorías, fases…), ítems (historias de usuario, requerimientos…), etapas e hitos.
+- Indicadores, líneas de tiempo y alertas definidos como reglas.
+- Se puede empaquetar en un único `.html` para embeberlo, por ejemplo, en una vista de ClickUp.
 
-Sigue sin servidor ni base de datos: el navegador consulta la API de ClickUp y arma la vista. Cambia la forma de trabajar: lo que antes estaba quemado en el HTML ahora vive en **`config/proyectos.js`**.
+## Requisitos
+
+- Un navegador moderno.
+- Un token personal de ClickUp (`pk_...`) con acceso a las listas que quieras mostrar.
+- Python 3 (solo para `build.py`) y Node.js (opcional, solo para probar el modelo).
+
+## Inicio rápido
+
+1. Clona el repositorio.
+2. Copia `config/secretos.example.js` como `config/secretos.js` y pega tu token
+   (ClickUp → foto de perfil → Configuración → Apps → API Token).
+3. Edita `config/proyectos.js`: define tus proyectos y los IDs de sus listas (ver [Configuración](#configuración)).
+4. Abre `index.html` en el navegador.
+
+Parámetros de URL:
+
+| Parámetro | Efecto |
+|---|---|
+| `?proyecto=<clave>` | Muestra otro de los proyectos configurados. |
+| `?vista=<clave>` | Abre directamente una pestaña. |
+| `?expandir=1` | Todas las tarjetas abiertas. |
+| `?demo=1` | Datos de prueba generados localmente (no necesita token; todo aparece marcado «PRUEBA»). |
+
+Para probar sin conectar nada, abre `index.html?demo=1`.
+
+## Estructura del proyecto
 
 ```
-clickupDashboard/
-├── index.html              estructura de la página
+├── index.html               estructura de la página
 ├── config/
-│   ├── proyectos.js        ← LO ÚNICO QUE SE EDITA: proyectos, ciclos, textos, colores, umbrales
-│   ├── secretos.example.js plantilla del token
-│   └── secretos.js         tu token (NO se versiona, está en .gitignore)
+│   ├── proyectos.js         ← lo único que se edita: proyectos, ciclos, textos, colores, umbrales
+│   ├── secretos.example.js  plantilla del token
+│   └── secretos.js          tu token (no se versiona, está en .gitignore)
 ├── css/dashboard.css
-├── js/model.js             ClickUp → { grupos, ítems }  (sin DOM)
-├── js/app.js               pintado, pestañas, líneas de tiempo, PDF
-├── js/demo-data.js         datos de PRUEBA para ?demo=1
-├── assets/                 logos
-├── build.py                empaqueta todo en un único .html
-└── plantilla/              dashboard original de Metro (referencia; el token va como marcador)
+├── js/model.js              ClickUp → { grupos, ítems } (sin DOM)
+├── js/app.js                pintado, pestañas, líneas de tiempo, PDF
+├── js/demo-data.js          datos de prueba para ?demo=1
+├── assets/                  logos
+├── build.py                 empaqueta todo en un único .html
+└── plantilla/               versión original de un solo archivo (referencia)
 ```
 
-## Uso rápido
+## Configuración
 
-1. Copia `config/secretos.example.js` como `config/secretos.js` y pega tu token (`pk_...`).
-2. Abre `index.html` en el navegador.
-   - `?proyecto=cju-p2019` → otro proyecto de los configurados.
-   - `?vista=<clave>` → abre directamente una pestaña (se actualiza sola al navegar).
-   - `?expandir=1` → todas las tarjetas abiertas.
-   - `?demo=1` → **datos de prueba** generados localmente (no necesita token; todo aparece marcado «PRUEBA»).
-3. Para entregar un solo archivo (como el original), por ejemplo para embeberlo en ClickUp:
-   ```bash
-   python3 build.py --proyecto cju-p2616 --con-token   # → dist/dashboard-cju-p2616.html
-   ```
-   Sin `--proyecto` se muestra un selector con todos los proyectos no ocultos. Sin `--con-token` el archivo no lleva el token.
+Todo vive en `config/proyectos.js`, que tiene tres bloques principales:
 
-## Cómo se interpreta ClickUp en Coljuegos
-
-Esta es la convención que tienen hoy las listas P2616 y P2019:
-
-```
-Reglas de negocio, Datos y Optimización        ← Epic sin padre      = CATEGORÍA (pestaña)
-├── HU001 - Traslado de tabla de fabricantes…   ← User Story (1006)   = HISTORIA DE USUARIO
-│   ├── Análisis y Levantamiento                ← etapa (tarea normal)
-│   │     └── actividades con fechas            ← definen las fechas de la etapa
-│   ├── Diseño y Preparación Técnica
-│   ├── Implementación y Despliegue
-│   ├── Pruebas y Validación
-│   ├── Documentación y Entrega
-│   ├── Paso a producción                       (no todas las HU la tienen)
-│   └── Refactor …                              ← subtarea que no es etapa = "otra actividad"
-└── Alertas por valor de cartón…                ← User Story sin código: se muestra como «sin código»
-```
-
-- **Ítem**: tarea de tipo *User Story* (`tiposClickUp: [1006]`) **o** con nombre `HU###`. El número y el nombre salen de `patronNombre`.
-- **Categoría**: la tarea padre de la HU (`grupos.fuente: 'padre'`). Otras opciones: `'lista'`, `'campo'` (campo personalizado) o `'rangos'` (por número, como las fases del Metro).
-- **La numeración HU se reinicia en cada categoría.** Cuando un código se repite, la etiqueta corta lleva las iniciales de la categoría (`RND·HU001`).
-- **No hay hitos.** Los indicadores se calculan con las etapas (ver `clasificacion`).
-
-## Qué se configura y dónde (`config/proyectos.js`)
+- **`proyectos`**: cada entrada es un dashboard seleccionable. Indica las listas de ClickUp (`fuente.listas`), qué tarea cuenta como ítem (`items`), cómo se agrupan (`grupos`) y qué ciclo usan (`ciclo`).
+- **`ciclos`**: describe cómo está armado cada ítem por dentro (etapas, hitos opcionales) y cómo se calculan los indicadores, las líneas de tiempo y las alertas. Varios proyectos pueden compartir un ciclo.
+- **`general`, `estadosClickUp`**: refresco, paleta de colores y el mapeo de los nombres de estado de ClickUp a los estados internos (`done`, `doing`, `blocked`, pendiente).
 
 | Qué quieres hacer | Dónde |
 |---|---|
-| Añadir o quitar un proyecto del selector | `proyectos` (u `oculto: true`) |
+| Añadir o quitar un proyecto del selector | `proyectos` (o `oculto: true`) |
 | Proyecto que abre por defecto | `proyectoPorDefecto` |
-| Unir varias Listas en un dashboard | `proyectos.<clave>.fuente.listas` |
-| Mostrar solo algunas categorías, ordenarlas o acortar su nombre | `grupos.incluir`, `grupos.excluir`, `grupos.orden`, `grupos.alias` |
+| Unir varias listas en un dashboard | `proyectos.<clave>.fuente.listas` |
+| Definir qué tarea es un ítem | `proyectos.<clave>.items` (`tiposClickUp`, `patronNombre`, `soloRaiz`) |
+| Mostrar solo algunos grupos, ordenarlos o acortar su nombre | `grupos.incluir`, `grupos.excluir`, `grupos.orden`, `grupos.alias` |
 | Nombres y orden de las etapas | `ciclos.<ciclo>.etapas` |
 | Tarjetas de la vista General y cuándo un ítem cuenta como «completo» | `ciclos.<ciclo>.clasificacion` |
 | Líneas de tiempo | `ciclos.<ciclo>.lineasDeTiempo` |
 | Umbrales de alerta (días) | `ciclos.<ciclo>.alertas` |
 | Estados de ClickUp reconocidos | `estadosClickUp` |
-| Textos (HU / RQ, Categoría / Fase), logos y colores | `items`, `grupos`, `cliente`, `tema`, `general.paleta` |
+| Textos, logos y colores | `items`, `grupos`, `cliente`, `tema`, `general.paleta` |
 | Intervalo de refresco | `general.refrescoMinutos` |
 
-Para un cliente nuevo normalmente basta con copiar un bloque de `proyectos` y, si su ciclo de vida es distinto, un bloque de `ciclos`. No hace falta tocar JS.
+El archivo está comentado campo por campo. Para sumar un equipo nuevo normalmente basta con copiar un bloque de `proyectos` y, si su ciclo de vida es distinto, un bloque de `ciclos`.
+
+### Cómo se interpreta la estructura de ClickUp
+
+El dashboard espera una jerarquía como esta (los nombres son configurables):
+
+```
+Grupo (tarea padre, lista, campo personalizado o rango)   ← una pestaña por grupo
+├── Ítem (historia de usuario, requerimiento…)            ← una tarjeta
+│   ├── Etapa 1                                           ← subtarea, en el orden del ciclo
+│   │     └── actividades con fechas                      ← definen las fechas de la etapa
+│   ├── Etapa 2
+│   └── Otra subtarea                                     ← se muestra como «otra actividad»
+└── …
+```
+
+- **Ítem**: se identifica por tipo de tarea de ClickUp (`tiposClickUp`), por nombre (`patronNombre`, una expresión regular cuyo grupo 1 es el número y el grupo 2 el nombre) o por ambos.
+- **Grupo**: `grupos.fuente` admite `'padre'` (tarea padre del ítem), `'lista'`, `'campo'` (campo personalizado) y `'rangos'` (por número del ítem).
+- **Etapas**: subtareas directas del ítem, reconocidas por nombre sin distinguir tildes ni mayúsculas (admiten `alias`).
+- **Hitos**: opcionales; son tareas dentro de un contenedor cuyo nombre coincide con `contenedorHitos`.
+- **Clasificación**: lista de reglas evaluadas en orden; gana la primera que se cumple. Puede basarse en el estado del ítem, en una etapa, en un hito o en si alguna etapa se inició.
 
 ## Qué muestra
 
 **General**
-- Una tarjeta por cada estado de `clasificacion` (con los chips de cada ítem; clic en un chip lleva a su tarjeta) y el total.
-- **Avance por categoría**: barra apilada por estado y porcentaje completo.
-- **Tablero de etapas**: cada ítem aparece en las columnas de las etapas en curso o bloqueadas, con los días que lleva en ellas (rojo si supera `diasEstancado`).
-- **Líneas de tiempo** configurables (en Coljuegos: fin de «Paso a producción» y cierre de la HU).
-- **Bloqueos**: ítems, etapas, actividades o hitos en estado bloqueado.
+- Una tarjeta por cada estado de `clasificacion`, con los chips de cada ítem, y el total.
+- Avance por grupo: barra apilada por estado y porcentaje completo.
+- Tablero de etapas: cada ítem aparece en las columnas de las etapas en curso o bloqueadas, con los días que lleva en ellas.
+- Líneas de tiempo configurables.
+- Bloqueos: ítems, etapas, actividades o hitos en estado bloqueado.
 
-**Pestaña por categoría**: buscador, expandir/colapsar todo y una tarjeta por HU con su progreso, la etapa actual, el estado, el flujo de etapas (fechas, días, sub-tareas bloqueadas), otras actividades y los hitos si el ciclo los tiene. Cada tarjeta enlaza a ClickUp (↗).
+**Pestaña por grupo**: buscador, expandir/colapsar todo y una tarjeta por ítem con su progreso, etapa actual, estado, flujo de etapas (fechas, días, subtareas bloqueadas), otras actividades y los hitos si el ciclo los tiene. Cada tarjeta enlaza a ClickUp.
 
-## Cambios respecto al HTML de Metro
+## Generar un único HTML
 
-- Configuración centralizada: ya no hay que buscar y reemplazar nombres de etapas o hitos, rangos de fase, umbrales ni prefijos dentro del código.
-- Pestañas dinámicas (una por categoría o fase encontrada), en lugar de las tres fases fijas.
-- Varios proyectos en el mismo código, con selector o `?proyecto=`.
-- Indicadores definidos como reglas, calculados con etapas o con hitos.
-- Una sola función de línea de tiempo en lugar de dos copias casi iguales.
-- Los nombres de tareas se escapan antes de insertarlos en el HTML (antes, un `<` en ClickUp rompía la vista).
-- Hitos y etapas se reconocen sin distinguir tildes ni mayúsculas, y admiten `alias`.
-- Estados de tipo «cerrado» en ClickUp cuentan como finalizados aunque tengan un nombre no listado.
-- Enlaces a ClickUp, buscador, expandir/colapsar todo, enlaces profundos (`?vista=`) y modo demo.
-- El token queda fuera del código (`secretos.js`, en `.gitignore`).
+```bash
+python3 build.py                                    # todos los proyectos, sin token
+python3 build.py --proyecto mi-proyecto             # fija el proyecto (oculta el selector)
+python3 build.py --proyecto mi-proyecto --con-token # incluye config/secretos.js
+```
 
-## Pendiente de validar con el equipo
-
-- `ciclos['coljuegos-hu'].clasificacion` es una **propuesta**: define qué significa «en desarrollo», «en pruebas», etc. a partir de las etapas.
-- Días de bloqueo: ClickUp no dice desde cuándo algo está bloqueado sin llamadas extra. Se usa la fecha de inicio de la etapa o la última actualización del ítem, según el caso.
-- La «etapa actual» usa `masAvanzada`, igual que en el Metro. En Coljuegos es habitual que varias etapas estén en curso a la vez; `primeraAbierta` es la alternativa. La barra `n/m` de la tarjeta muestra el avance real.
+La salida queda en `dist/` (ignorado por git). Sin `--proyecto` el archivo muestra un selector con todos los proyectos no ocultos. Sin `--con-token` no incluye el token. `build.py` solo usa la librería estándar de Python.
 
 ## Probar el modelo sin navegador
 
@@ -115,12 +123,29 @@ node -e "
 globalThis.window = globalThis;
 require('./config/proyectos.js');
 const D = require('./js/model.js'); require('./js/demo-data.js');
-const p = D.model.resolveProject(DASHBOARD_CONFIG, 'cju-p2616');
+const p = D.model.resolveProject(DASHBOARD_CONFIG, DASHBOARD_CONFIG.proyectoPorDefecto);
 const m = D.model.buildModel(D.demoTasks(p), p, D.model.makeStatusNormalizer(DASHBOARD_CONFIG.estadosClickUp));
 m.items.forEach(i => console.log(i.shortLabel, i.state.clave, i.currentStage && i.currentStage.name));
 "
 ```
 
+## Limitaciones conocidas
+
+- ClickUp no indica desde cuándo algo está bloqueado sin llamadas adicionales; los días de bloqueo se calculan con la fecha de inicio de la etapa o la última actualización del ítem.
+- La «etapa actual» usa por defecto `masAvanzada`. Si en tu flujo suelen estar varias etapas en curso a la vez, `primeraAbierta` puede representarlo mejor; la barra `n/m` de la tarjeta muestra el avance real.
+- Se consultan hasta `general.maxPaginasPorLista` páginas de 100 tareas por lista.
+
 ## Seguridad
 
-Igual que en el original: el token viaja en texto plano dentro del HTML y tiene los permisos de su dueño. Comparte los archivos generados con `--con-token` solo por canales privados, usa un usuario con acceso limitado y, si se filtra, regenera el token.
+El token de ClickUp viaja en texto plano dentro del HTML y tiene los permisos de su dueño.
+
+- No subas `config/secretos.js` ni los archivos de `dist/` generados con `--con-token`.
+- Comparte esos archivos solo por canales privados.
+- Usa un usuario con acceso limitado a lo necesario.
+- Si el token se filtra, regéneralo en ClickUp.
+
+## Contribuir
+
+1. Crea una rama a partir de `main`.
+2. Mantén la lógica de negocio en la configuración y no en el código.
+3. Abre un pull request describiendo el cambio.
